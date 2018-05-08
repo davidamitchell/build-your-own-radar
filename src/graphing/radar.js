@@ -7,8 +7,10 @@ const RingCalculator = require('../util/ringCalculator');
 
 const MIN_BLIP_WIDTH = 12;
 
-const Radar = function (size, radar) {
-  var svg, radarElement;
+const Radar = function (size, radar, numberOfPiePieces) {
+  var svg, radarElement, baseAngle;
+  baseAngle = parseInt(360.0 / numberOfPiePieces)
+  console.log('baseAngle', baseAngle, numberOfPiePieces)
 
   var tip = d3tip().attr('class', 'd3-tip').html(function (text) {
     return text;
@@ -38,27 +40,15 @@ const Radar = function (size, radar) {
   }
 
   function plotLines(quadrantGroup, quadrant) {
-    var startX = size * (1 - (-Math.sin(toRadian(quadrant.startAngle)) + 1) / 2);
-    var endX = size * (1 - (-Math.sin(toRadian(quadrant.startAngle - 90)) + 1) / 2);
-
-    var startY = size * (1 - (Math.cos(toRadian(quadrant.startAngle)) + 1) / 2);
-    var endY = size * (1 - (Math.cos(toRadian(quadrant.startAngle - 90)) + 1) / 2);
-
-    if (startY > endY) {
-      var aux = endY;
-      endY = startY;
-      startY = aux;
-    }
+    console.log('quadrant.startAngle',quadrant.startAngle)
+    var endX = size * (1 - (-Math.sin(toRadian(quadrant.startAngle - baseAngle)) + 1) / 2);
+    var endY = size * (1 - (Math.cos(toRadian(quadrant.startAngle - baseAngle)) + 1) / 2);
 
     quadrantGroup.append('line')
-      .attr('x1', center()).attr('x2', center())
-      .attr('y1', startY - 2).attr('y2', endY + 2)
-      .attr('stroke-width', 10);
+      .attr('x1', center()).attr('x2', endX)
+      .attr('y1', center()).attr('y2', endY)
+      .attr('stroke-width', 10)
 
-    quadrantGroup.append('line')
-      .attr('x1', endX).attr('y1', center())
-      .attr('x2', startX).attr('y2', center())
-      .attr('stroke-width', 10);
   }
 
   function plotQuadrant(rings, quadrant) {
@@ -73,7 +63,7 @@ const Radar = function (size, radar) {
         .innerRadius(ringCalculator.getRadius(i))
         .outerRadius(ringCalculator.getRadius(i + 1))
         .startAngle(toRadian(quadrant.startAngle))
-        .endAngle(toRadian(quadrant.startAngle - 90));
+        .endAngle(toRadian(quadrant.startAngle - baseAngle));
 
       quadrantGroup.append('path')
         .attr('d', arc)
@@ -140,8 +130,8 @@ const Radar = function (size, radar) {
 
     var radius = chance.floating({min: minRadius + blip.width / 2, max: maxRadius - blip.width / 2});
     var angleDelta = Math.asin(blip.width / 2 / radius) * 180 / Math.PI;
-    angleDelta = angleDelta > 45 ? 45 : angleDelta;
-    var angle = toRadian(chance.integer({min: angleDelta, max: 90 - angleDelta}));
+    angleDelta = angleDelta > ( baseAngle / 2 ) ? ( baseAngle / 2 ) : angleDelta;
+    var angle = toRadian(chance.integer({min: angleDelta, max: baseAngle - angleDelta}));
 
     var x = center() + radius * Math.cos(angle) * adjustX;
     var y = center() + radius * Math.sin(angle) * adjustY;
@@ -181,6 +171,8 @@ const Radar = function (size, radar) {
 
       minRadius = ringCalculator.getRadius(i);
       maxRadius = ringCalculator.getRadius(i + 1);
+
+      console.log('maxRadius, minRadius',maxRadius, minRadius)
 
       var sumRing = ring.name().split('').reduce(function (p, c) {
         return p + c.charCodeAt(0);
@@ -292,8 +284,14 @@ const Radar = function (size, radar) {
     blipListItem.on('click', clickBlip);
   }
 
-  function removeHomeLink(){
-    d3.select('.home-link').remove();
+  function showHomeLink(){
+    // d3.select('.home-link').remove();
+    d3.select('.home-link').style("opacity", 1);
+  }
+
+  function hideHomeLink(){
+    // d3.select('.home-link').remove();
+    d3.select('.home-link').style("opacity", 0);
   }
 
   function createHomeLink(pageElement) {
@@ -373,7 +371,7 @@ const Radar = function (size, radar) {
   }
 
   function redrawFullRadar() {
-    removeHomeLink();
+    hideHomeLink();
     removeRadarLegend();
 
     svg.style('left', 0).style('right', 0);
@@ -384,6 +382,11 @@ const Radar = function (size, radar) {
 
     d3.selectAll('.quadrant-table').classed('selected', false);
     d3.selectAll('.home-link').classed('selected', false);
+
+    d3.selectAll('line')
+      .transition()
+      .duration(1001)
+      .attr('transform', 'scale(1)');
 
     d3.selectAll('.quadrant-group')
       .transition()
@@ -410,10 +413,10 @@ const Radar = function (size, radar) {
       .style('cursor', 'pointer')
       .on('click', redrawFullRadar);
 
-    header.select('.radar-title')
-      .append('div')
-      .attr('class', 'radar-title__logo')
-      .html('<a href="https://www.thoughtworks.com"> <img src="/images/logo.png" /> </a>');
+    // header.select('.radar-title')
+    //   .append('div')
+    //   .attr('class', 'radar-title__logo')
+    //   .html('<a href="https://www.thoughtworks.com"> <img src="/images/logo.png" /> </a>');
 
     return header;
   }
@@ -421,6 +424,7 @@ const Radar = function (size, radar) {
   function plotQuadrantButtons(quadrants, header) {
 
     function addButton(quadrant) {
+      console.log('add button', quadrant)
       radarElement
         .append('div')
         .attr('class', 'quadrant-table ' + quadrant.order);
@@ -434,9 +438,13 @@ const Radar = function (size, radar) {
         .on('click', selectQuadrant.bind({}, quadrant.order, quadrant.startAngle));
     }
 
-    _.each([0, 1, 2, 3], function (i) {
+    for(var i=0; i < numberOfPiePieces; ++i){
+      console.log('quadrants',quadrants[i]);
       addButton(quadrants[i]);
-    });
+    }
+    // _.each([0, 1, 2, 3], function (i) {
+    //   addButton(quadrants[i]);
+    // });
 
 
     header.append('div')
@@ -469,7 +477,7 @@ const Radar = function (size, radar) {
 
   function selectQuadrant(order, startAngle) {
     d3.selectAll('.home-link').classed('selected', false);
-    createHomeLink(d3.select('header'));
+    showHomeLink();
 
     d3.selectAll('.button').classed('selected', false).classed('full-view', false);
     d3.selectAll('.button.' + order).classed('selected', true);
@@ -483,7 +491,7 @@ const Radar = function (size, radar) {
     var adjustY = Math.cos(toRadian(startAngle)) + Math.sin(toRadian(startAngle));
 
     var translateX = (-1 * (1 + adjustX) * size / 2 * (scale - 1)) + (-adjustX * (1 - scale / 2) * size);
-    var translateY = (-1 * (1 - adjustY) * (size / 2 - 7) * (scale - 1)) - ((1 - adjustY) / 2 * (1 - scale / 2) * size);
+    var translateY = (-1 * (1 - adjustY) * (size / 2 ) * (scale - 1)) - ((1 - adjustY) / 2 * (1 - scale / 2) * size);
 
     var translateXAll = (1 - adjustX) / 2 * size * scale / 2 + ((1 - adjustX) / 2 * (1 - scale / 2) * size);
     var translateYAll = (1 + adjustY) / 2 * size * scale / 2;
@@ -499,6 +507,7 @@ const Radar = function (size, radar) {
       .transition()
       .duration(1000)
       .attr('transform', 'translate(' + translateX + ',' + translateY + ')scale(' + scale + ')');
+
     d3.selectAll('.quadrant-group-' + order + ' .blip-link text').each(function () {
       var x = d3.select(this).attr('x');
       var y = d3.select(this).attr('y');
@@ -511,13 +520,17 @@ const Radar = function (size, radar) {
     d3.selectAll('.quadrant-group')
       .style('pointer-events', 'auto');
 
+    d3.selectAll('line')
+      .transition()
+      .duration(1)
+      .style('pointer-events', 'none')
+      .attr('transform', 'translate(' + translateXAll + ',' + translateYAll + ')scale(0)');
+
     d3.selectAll('.quadrant-group:not(.quadrant-group-' + order + ')')
       .transition()
       .duration(1000)
       .style('pointer-events', 'none')
       .attr('transform', 'translate(' + translateXAll + ',' + translateYAll + ')scale(0)');
-
-
 
     if (d3.select('.legend.legend-' + order).empty()){
       drawLegend(order);
@@ -544,10 +557,16 @@ const Radar = function (size, radar) {
 
     _.each(quadrants, function (quadrant) {
       var quadrantGroup = plotQuadrant(rings, quadrant);
-      plotLines(quadrantGroup, quadrant);
-      plotTexts(quadrantGroup, rings, quadrant);
+      // plotTexts(quadrantGroup, rings, quadrant);
       plotBlips(quadrantGroup, rings, quadrant);
     });
+
+    _.each(quadrants, function (quadrant) {
+      plotLines(svg, quadrant);
+    });
+
+    createHomeLink(d3.select('header'));
+    d3.select('.home-link').style("opacity", 0);
 
     plotRadarFooter();
   };

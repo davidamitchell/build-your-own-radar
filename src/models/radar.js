@@ -7,17 +7,28 @@ const _ = {
   sortBy: require('lodash/sortBy')
 };
 
-const Radar = function() {
+const Radar = function(numberOfPiePieces) {
   var self, quadrants, blipNumber, addingQuadrant;
 
   blipNumber = 0;
   addingQuadrant = 0;
-  quadrants = [
-    {order: 'first', startAngle: 90},
-    {order: 'second', startAngle: 0},
-    {order: 'third', startAngle: -90},
-    {order: 'fourth', startAngle: -180}
-  ];
+  angle = parseInt(360.0 / numberOfPiePieces)
+  console.log(numberOfPiePieces, 'numberOfPiePieces')
+  quadrants = [];
+  for(var i=0; i < numberOfPiePieces; ++i){
+    console.log('number of pie pieces', angle*i, i)
+    quadrants.push({order: 'order_'+i, startAngle: angle*(i+1)})
+  }
+  // console.log('quadrants', quadrants)
+  // quadrants = [];
+  // quadrants = [
+  //   {order: 'xfirst', startAngle: angle*1},
+  //   {order: 'xsecond', startAngle: angle*2},
+  //   {order: 'xthird', startAngle: angle*3},
+  //   {order: 'xfourth', startAngle: angle*4},
+  //   {order: 'xfith', startAngle: angle*5}
+  // ];
+  // console.log('quadrants---', quadrants)
   self = {};
 
   function setNumbers(blips) {
@@ -28,7 +39,7 @@ const Radar = function() {
 
   self.addQuadrant = function (quadrant) {
     if(addingQuadrant >= 4) {
-      throw new MalformedDataError(ExceptionMessages.TOO_MANY_QUADRANTS);
+      // throw new MalformedDataError(ExceptionMessages.TOO_MANY_QUADRANTS);
     }
     quadrants[addingQuadrant].quadrant = quadrant;
     setNumbers(quadrant.blips());
@@ -37,12 +48,13 @@ const Radar = function() {
 
    function allQuadrants() {
     if (addingQuadrant < 4)
-      throw new MalformedDataError(ExceptionMessages.LESS_THAN_FOUR_QUADRANTS);
-
+      // throw new MalformedDataError(ExceptionMessages.LESS_THAN_FOUR_QUADRANTS);
+    console.log(quadrants)
     return _.map(quadrants, 'quadrant');
   }
 
   function allBlips() {
+    console.log(allQuadrants())
     return allQuadrants().reduce(function (blips, quadrant) {
       return blips.concat(quadrant.blips());
     }, []);

@@ -21,8 +21,10 @@ const InputSanitizer = function () {
     };
 
     function trimWhiteSpaces(blip) {
+      console.log('blip',blip)
       var processedBlip = {};
       _.forOwn(blip, function(value, key) {
+        console.log('value',value)
         processedBlip[key.trim()] = value.trim();
       });
       return processedBlip;
